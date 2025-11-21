@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Music Genre Classifier</title>
+  <style>
+    body{background:#0f0f0f;color:#eaeaea;font-family:Arial, Helvetica, sans-serif;text-align:center;padding:40px}
+    .card{max-width:900px;margin:30px auto;padding:36px;border-radius:14px;background:#1f1f1f;box-shadow:0 6px 24px rgba(0,0,0,0.6)}
+    h1{font-size:42px;margin:0 0 22px;color:#fff}
+    .btn{background:#6c3bd6;color:#fff;padding:14px 26px;border-radius:10px;border:none;font-size:18px;cursor:pointer}
+    #out{margin-top:18px;font-size:20px}
+    .small{font-size:16px;color:#cfcfcf}
+    .spinner{display:inline-block;width:24px;height:24px;border:3px solid rgba(255,255,255,0.15);border-top-color:#6c3bd6;border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;margin-left:8px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .topk{display:flex;justify-content:center;gap:18px;margin-top:18px}
+    .pill{background:#0b2; color:#002500; padding:10px 16px;border-radius:8px;font-weight:bold}
+    audio{margin-top:16px}
+    .error{color:#ff6b6b}
+  </style>
+</head>
+<body>
+  <h1>Music Genre Classifier</h1>
+  <div class="card">
+    <input type="file" id="fileInput" accept="audio/*" />
+    <div style="margin:18px 0;">
+      <button id="btn" class="btn">Predict Genre</button>
+      <span id="loading" style="display:none"><span class="spinner"></span> Processing...</span>
+    </div>
+
+    <div id="player"></div>
+    <div id="out"></div>
+    <div id="topk" class="topk" style="display:none"></div>
+    <div id="err" class="error"></div>
+  </div>
+
+<script>
+document.getElementById('btn').addEventListener('click', async () => {
+  document.getElementById('err').innerText = '';
+  const f = document.getElementById('fileInput').files[0];
+  if (!f) { alert('Select an audio file first'); return; }
+
+  // show audio player
+  const playerDiv = document.getElementById('player');
+  playerDiv.innerHTML = '';
+  const audio = document.createElement('audio');
+  audio.controls = true;
+  audio.src = URL.createObjectURL(f);
+  playerDiv.appendChild(audio);
+
+  const fd = new FormData();
+  fd.append('file', f);
+  document.getElementById('loading').style.display = 'inline-block';
+  document.getElementById('out').innerText = '';
+  document.getElementById('topk').style.display = 'none';
+  document.getElementById('topk').innerHTML = '';
+
+  try {
+    const res = await fetch('/predict', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) {
+      document.getElementById('err').innerText = data.error || 'Server error';
+      return;
+    }
+    // show main result
+    document.getElementById('out').innerHTML =
+      `<div style="font-size:28px;color:#08c96b;font-weight:700">Predicted Genre: ${data.genre}</div>
+       <div class="small">Confidence: ${data.confidence !== undefined ? data.confidence.toFixed(2) : 'N/A'}</div>
+       <div class="small">Coverage: ${data.coverage !== undefined ? data.coverage.toFixed(2) : 'N/A'}</div>`;
+
+    // top-k
+    if (data.top_k && Array.isArray(data.top_k)) {
+      const topk = document.getElementById('topk');
+      topk.style.display = 'flex';
+      data.top_k.forEach(item => {
+        const d = document.createElement('div');
+        d.className = 'pill';
+        d.innerText = `${item.label}\n${(item.confidence||0).toFixed(2)}`;
+        topk.appendChild(d);
+      });
+    }
+  } catch (err) {
+    document.getElementById('err').innerText = err.toString();
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+# Music Genre Classifier — Demo
+
+## Files
+- app.py : Flask app
+- templates/index.html : Frontend UI
+- artifacts/ : contains model.pkl, scaler.pkl, encoder.pkl, feature_order.json
+- uploads/ : temporary saved uploads
+- requirements.txt
+
+## Run locally
+1. Create & activate venv (recommended)
+2. Install: `pip install -r requirements.txt`
+3. Run: `python app.py`
+4. Open `http://127.0.0.1:5000` and upload a .wav file
+
+## Notes
+- The app extracts MFCC mean/std and maps them to the saved feature order. For better accuracy, use the same feature extraction code used during training.
+- The app returns JSON: `{"genre": "...", "numeric": <int>, "confidence": <float>}`
