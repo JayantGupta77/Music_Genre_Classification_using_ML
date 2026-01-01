@@ -1,5 +1,4 @@
-# app.py (FULL file - copy & replace your existing app.py)
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template
 import joblib
 import librosa
 import numpy as np
@@ -13,9 +12,6 @@ from typing import Optional
 
 app = Flask(__name__)
 
-# ---------------------------
-# Load artifacts
-# ---------------------------
 ART_DIR = "artifacts"
 MODEL_PATH = os.path.join(ART_DIR, "model.pkl")
 SCALER_PATH = os.path.join(ART_DIR, "scaler.pkl")
@@ -34,15 +30,29 @@ except Exception:
 with open(FEATURE_ORDER_PATH, "r") as f:
     feature_order = json.load(f)
 
-# ---------------------------
-# Helper: attempt to call extractors from model_utils
-# ---------------------------
+try:
+    print("[STARTUP] model type:", type(model))
+    if hasattr(model, "classes_"):
+        print("[STARTUP] model.classes_ (len):", len(model.classes_), "sample:", getattr(model, "classes_")[:10])
+except Exception:
+    pass
+
+try:
+    feat_in = getattr(scaler, "feature_names_in_", None)
+    print("[STARTUP] scaler loaded. has feature_names_in_:", feat_in is not None)
+    if feat_in is not None:
+        try:
+            print("[STARTUP] scaler.feature_names_in_ (first 20):", list(feat_in)[:20])
+        except Exception:
+            pass
+except Exception:
+    pass
+
+print("[STARTUP] feature_order length:", len(feature_order))
+print("[STARTUP] feature_order (first 20):", feature_order[:20])
+
 def try_user_extractor(path: str, duration: int = 3):
-    """
-    Try to import model_utils and call any function name containing 'extract' (case-insensitive).
-    Accepts functions that take (path) or (y, sr).
-    Returns dict/Series/DF/array or None.
-    """
+    
     try:
         m = importlib.import_module("model_utils")
     except Exception:
@@ -66,9 +76,6 @@ def try_user_extractor(path: str, duration: int = 3):
             continue
     return None
 
-# ---------------------------
-# Fallback extractor (robust)
-# ---------------------------
 def compute_features_fallback(path: str, n_mfcc: int = 20, duration: int = 3):
     """
     Robust fallback extractor using librosa. Returns dict feature_name -> float.
@@ -77,68 +84,70 @@ def compute_features_fallback(path: str, n_mfcc: int = 20, duration: int = 3):
     y, sr = librosa.load(path, duration=duration, sr=None)
     feats = {}
 
-    # RMS
     try:
         rms = librosa.feature.rms(y=y)[0]
         feats["rms_mean"] = float(np.mean(rms))
         feats["rms_std"] = float(np.std(rms))
+        feats["rms_var"] = float(np.var(rms))
     except Exception:
-        feats["rms_mean"] = 0.0; feats["rms_std"] = 0.0
+        feats["rms_mean"] = 0.0; feats["rms_std"] = 0.0; feats["rms_var"] = 0.0
 
-    # Zero crossing
     try:
         z = librosa.feature.zero_crossing_rate(y)[0]
         feats["zero_crossing_rate_mean"] = float(np.mean(z))
         feats["zero_crossing_rate_std"] = float(np.std(z))
+        feats["zero_crossing_rate_var"] = float(np.var(z))
     except Exception:
-        feats["zero_crossing_rate_mean"] = 0.0; feats["zero_crossing_rate_std"] = 0.0
+        feats["zero_crossing_rate_mean"] = 0.0; feats["zero_crossing_rate_std"] = 0.0; feats["zero_crossing_rate_var"] = 0.0
 
-    # Spectral centroid / bandwidth / rolloff
     try:
         sc = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
         feats["spectral_centroid_mean"] = float(np.mean(sc))
         feats["spectral_centroid_std"] = float(np.std(sc))
+        feats["spectral_centroid_var"] = float(np.var(sc))
     except Exception:
-        feats["spectral_centroid_mean"] = 0.0; feats["spectral_centroid_std"] = 0.0
+        feats["spectral_centroid_mean"] = 0.0; feats["spectral_centroid_std"] = 0.0; feats["spectral_centroid_var"] = 0.0
 
     try:
         sbw = librosa.feature.spectral_bandwidth(y=y, sr=sr)[0]
         feats["spectral_bandwidth_mean"] = float(np.mean(sbw))
         feats["spectral_bandwidth_std"] = float(np.std(sbw))
+        feats["spectral_bandwidth_var"] = float(np.var(sbw))
     except Exception:
-        feats["spectral_bandwidth_mean"] = 0.0; feats["spectral_bandwidth_std"] = 0.0
+        feats["spectral_bandwidth_mean"] = 0.0; feats["spectral_bandwidth_std"] = 0.0; feats["spectral_bandwidth_var"] = 0.0
 
     try:
         roll = librosa.feature.spectral_rolloff(y=y, sr=sr)[0]
         feats["rolloff_mean"] = float(np.mean(roll))
         feats["rolloff_std"] = float(np.std(roll))
+        feats["rolloff_var"] = float(np.var(roll))
     except Exception:
-        feats["rolloff_mean"] = 0.0; feats["rolloff_std"] = 0.0
+        feats["rolloff_mean"] = 0.0; feats["rolloff_std"] = 0.0; feats["rolloff_var"] = 0.0
 
-    # Chroma
     try:
         chroma = librosa.feature.chroma_stft(y=y, sr=sr)
         feats["chroma_stft_mean"] = float(np.mean(chroma))
         feats["chroma_stft_std"] = float(np.std(chroma))
+        feats["chroma_stft_var"] = float(np.var(chroma))
     except Exception:
-        feats["chroma_stft_mean"] = 0.0; feats["chroma_stft_std"] = 0.0
+        feats["chroma_stft_mean"] = 0.0; feats["chroma_stft_std"] = 0.0; feats["chroma_stft_var"] = 0.0
 
-    # Harmony (tonnetz) and perceptual (spectral contrast)
     try:
         harm = librosa.feature.tonnetz(y=librosa.effects.harmonic(y), sr=sr)
         feats["harmony_mean"] = float(np.mean(harm))
         feats["harmony_std"] = float(np.std(harm))
+        feats["harmony_var"] = float(np.var(harm))
     except Exception:
-        feats["harmony_mean"] = 0.0; feats["harmony_std"] = 0.0
+        feats["harmony_mean"] = 0.0; feats["harmony_std"] = 0.0; feats["harmony_var"] = 0.0
 
     try:
         perc = librosa.feature.spectral_contrast(y=y, sr=sr)
         feats["perceptr_mean"] = float(np.mean(perc))
         feats["perceptr_std"] = float(np.std(perc))
+        feats["perceptr_var"] = float(np.var(perc))
     except Exception:
-        feats["perceptr_mean"] = 0.0; feats["perceptr_std"] = 0.0
+        feats["perceptr_mean"] = 0.0; feats["perceptr_std"] = 0.0; feats["perceptr_var"] = 0.0
 
-    # Tempo
     try:
         tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
         if isinstance(tempo, (list, tuple, np.ndarray)):
@@ -147,7 +156,6 @@ def compute_features_fallback(path: str, n_mfcc: int = 20, duration: int = 3):
     except Exception:
         feats["tempo"] = 0.0
 
-    # MFCC mean / std
     try:
         mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
         mfcc_means = np.mean(mfcc.T, axis=0)
@@ -155,31 +163,22 @@ def compute_features_fallback(path: str, n_mfcc: int = 20, duration: int = 3):
         for i in range(len(mfcc_means)):
             feats[f"mfcc{i+1}_mean"] = float(mfcc_means[i])
             feats[f"mfcc{i+1}_std"] = float(mfcc_stds[i])
+            feats[f"mfcc{i+1}_var"] = float(mfcc_stds[i])
     except Exception:
         for i in range(n_mfcc):
             feats[f"mfcc{i+1}_mean"] = 0.0
             feats[f"mfcc{i+1}_std"] = 0.0
-
-    # placeholders if training expects them
-    feats.setdefault("harmony_mean", 0.0)
-    feats.setdefault("harmony_std", 0.0)
-    feats.setdefault("percept_mean", 0.0)
-    feats.setdefault("percept_std", 0.0)
+            feats[f"mfcc{i+1}_var"] = 0.0
 
     return feats
 
-# ---------------------------
-# Build feature vector aligned with feature_order.json
-# with alias handling for common naming variants
-# ---------------------------
 def build_feature_vector_from_dict(feature_order_list, feature_dict):
     """
     Returns np.array vector (1D) matching feature_order_list.
-    Uses fuzzy matching and alias mapping to maximize coverage.
+    Uses alias mapping to maximize coverage.
     """
     vec = np.zeros(len(feature_order_list), dtype=float)
 
-    # normalize keys to lowercase
     fd = {}
     for k, v in feature_dict.items():
         if v is None:
@@ -190,62 +189,47 @@ def build_feature_vector_from_dict(feature_order_list, feature_dict):
             try:
                 fd[k.lower()] = float(np.asarray(v).ravel()[0])
             except Exception:
-                # ignore non-numeric values
                 pass
 
-    # alias map for known naming differences between extractor and feature_order
     aliases = {
-        "chroma_stft_mean": "chroma_stft_mean",  # keep explicit (no-op) but allow overrides
         "chroma_stft_var": "chroma_stft_std",
         "chroma_var": "chroma_stft_std",
-        "chroma_mean": "chroma_stft_mean",
-        "perceptr_mean": "perceptr_mean",
         "perceptr_var": "perceptr_std",
-        "percept_mean": "perceptr_mean",
         "percept_var": "perceptr_std",
         "percept_mean": "perceptr_mean",
         "perceptr_mean": "perceptr_mean",
-        "perceptr_var": "perceptr_std",
         "harmony_var": "harmony_std",
-        # some feature_order use 'var' instead of 'std'
-        # mfcc variants are handled below
+        "rms_var": "rms_std",
     }
-    # normalize alias keys and values
     aliases = {k.lower(): v.lower() for k, v in aliases.items()}
 
     for i, name in enumerate(feature_order_list):
         n = name.lower()
-
-        # 1) alias check
+        # alias
         if n in aliases:
             alias_key = aliases[n]
             if alias_key in fd:
                 vec[i] = fd[alias_key]
                 continue
 
-        # 2) direct exact match
         if n in fd:
             vec[i] = fd[n]
             continue
 
-        # 3) underscore-normalized match
         n2 = re.sub(r"[^a-z0-9]+", "_", n)
         if n2 in fd:
             vec[i] = fd[n2]
             continue
 
-        # 4) compact match (remove underscores)
         n3 = n2.replace("_", "")
         if n3 in fd:
             vec[i] = fd[n3]
             continue
 
-        # 5) mfcc naming variants: handle mfcc1_mean vs mfcc_1_mean etc
         m = re.search(r"mfcc[_\- ]*?(\d+).*?(mean|std|var)?", n)
         if m:
             idx = int(m.group(1))
             suffix = (m.group(2) or "mean").lower()
-            # normalize 'var' -> 'std'
             if suffix == "var":
                 suffix = "std"
             key1 = f"mfcc{idx}_{suffix}"
@@ -254,12 +238,7 @@ def build_feature_vector_from_dict(feature_order_list, feature_dict):
                 vec[i] = fd[key1]; continue
             if key2 in fd:
                 vec[i] = fd[key2]; continue
-            # also try without separator
-            key3 = f"mfcc{idx}_{suffix}"
-            if key3 in fd:
-                vec[i] = fd[key3]; continue
 
-        # 6) substring fallback: if any fd key is substring of required name
         for k in fd.keys():
             if k in n:
                 try:
@@ -267,26 +246,14 @@ def build_feature_vector_from_dict(feature_order_list, feature_dict):
                     break
                 except Exception:
                     pass
-
-        # otherwise leave zero (safe)
     return vec
 
-# ---------------------------
-# ROUTES
-# ---------------------------
 @app.route("/")
 def home():
     return render_template("index.html")
 
 @app.route("/debug_features", methods=["POST"])
 def debug_features():
-    """
-    Debug endpoint: submits an audio file and returns:
-    - feature_dict (from user extractor or fallback)
-    - vector aligned to feature_order
-    - coverage / nonzero indices
-    - small mapping report
-    """
     try:
         if "file" not in request.files:
             return jsonify({"error": "No file uploaded"}), 400
@@ -298,7 +265,6 @@ def debug_features():
         temp_path = os.path.join("uploads", "temp.wav")
         file.save(temp_path)
 
-        # try user extractor
         user_out = None
         try:
             user_out = try_user_extractor(temp_path, duration=3)
@@ -329,7 +295,6 @@ def debug_features():
         nonzero_idx = np.where(np.abs(vec) > 1e-9)[0]
         coverage = float(len(nonzero_idx) / len(vec))
 
-        # mapping report (first few lines)
         map_report = []
         for i in nonzero_idx[:60]:
             map_report.append({"idx": int(i), "feature_order": feature_order[i], "value": float(vec[i])})
@@ -350,7 +315,6 @@ def debug_features():
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
-        # save upload
         if "file" not in request.files:
             return jsonify({"error": "No file uploaded"}), 400
         file = request.files["file"]
@@ -362,7 +326,6 @@ def predict():
         file.save(temp_path)
         print("[INFO] saved upload ->", temp_path)
 
-        # try user extractor (unless forced off)
         used_user = False
         user_out = None
         if request.args.get("force_fallback", "0").lower() not in ("1", "true", "yes"):
@@ -375,10 +338,8 @@ def predict():
         feature_dict = None
         vec = None
 
-        # Interpret user_out if present
         if user_out is not None:
             try:
-                # pandas Series
                 if isinstance(user_out, pd.Series):
                     feature_dict = user_out.to_dict()
                     vec = build_feature_vector_from_dict(feature_order, feature_dict)
@@ -392,7 +353,6 @@ def predict():
                     vec = build_feature_vector_from_dict(feature_order, feature_dict)
                     used_user = True
                 else:
-                    # try numeric array-like
                     arr = np.asarray(user_out).ravel()
                     if arr.size == len(feature_order):
                         vec = arr.astype(float)
@@ -401,26 +361,22 @@ def predict():
                 print("[WARN] interpreting user extractor output failed:", e)
                 used_user = False
 
-        # fallback extractor if user extractor absent/failed
         if vec is None:
             print("[INFO] Using fallback extractor")
             feature_dict = compute_features_fallback(temp_path, n_mfcc=20, duration=3)
             vec = build_feature_vector_from_dict(feature_order, feature_dict)
             used_user = False
 
-        # debug: show vector slice + coverage
         nonzero_idx = np.where(np.abs(vec) > 1e-9)[0]
         coverage = len(nonzero_idx) / float(len(vec))
         print(f"[DEBUG] feature_order (first 20): {feature_order[:20]}")
         print(f"[DEBUG] feature_vector slice (first 20): {np.round(vec[:20], 4)}")
         print(f"[DEBUG] nonzero count: {len(nonzero_idx)} / {len(vec)} -> coverage: {coverage:.2f}")
 
-        # scale & predict
         X_df = pd.DataFrame([vec], columns=feature_order)
         X_scaled = scaler.transform(X_df)
         pred_num = model.predict(X_scaled)[0]
 
-        # predict_proba
         proba = None; top_conf = None
         if hasattr(model, "predict_proba"):
             proba = model.predict_proba(X_scaled)[0]
@@ -431,17 +387,14 @@ def predict():
                 top_conf = float(np.max(proba))
             print("[DEBUG] probabilities (slice):", np.round(proba[:8], 3).tolist())
 
-        # decode
         label = pred_num
         if encoder is not None:
             try:
-                # try direct numeric decode
                 label = encoder.inverse_transform([pred_num])[0]
             except Exception:
                 try:
                     label = encoder.inverse_transform([str(pred_num)])[0]
                 except Exception:
-                    # fallback: if encoder.classes_ exists and pred_num is index-like, map it
                     try:
                         classes = getattr(encoder, "classes_", None)
                         if classes is not None and isinstance(pred_num, (int, np.integer)) and 0 <= int(pred_num) < len(classes):
@@ -466,8 +419,5 @@ def predict():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-# ---------------------------
-# run
-# ---------------------------
 if __name__ == "__main__":
     app.run(debug=True)
