@@ -2,7 +2,6 @@
 import glob, os, json, joblib, numpy as np, pandas as pd, librosa, re
 from collections import defaultdict
 
-# load mapping info
 with open("artifacts/feature_order.json","r") as f:
     feature_order = json.load(f)
 model = joblib.load("artifacts/model.pkl")

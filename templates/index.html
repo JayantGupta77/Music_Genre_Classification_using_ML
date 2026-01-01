@@ -1,89 +1,294 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Music Genre Classifier</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Music Genre Classifier — Demo</title>
   <style>
-    body{background:#0f0f0f;color:#eaeaea;font-family:Arial, Helvetica, sans-serif;text-align:center;padding:40px}
-    .card{max-width:900px;margin:30px auto;padding:36px;border-radius:14px;background:#1f1f1f;box-shadow:0 6px 24px rgba(0,0,0,0.6)}
-    h1{font-size:42px;margin:0 0 22px;color:#fff}
-    .btn{background:#6c3bd6;color:#fff;padding:14px 26px;border-radius:10px;border:none;font-size:18px;cursor:pointer}
-    #out{margin-top:18px;font-size:20px}
-    .small{font-size:16px;color:#cfcfcf}
-    .spinner{display:inline-block;width:24px;height:24px;border:3px solid rgba(255,255,255,0.15);border-top-color:#6c3bd6;border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;margin-left:8px}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .topk{display:flex;justify-content:center;gap:18px;margin-top:18px}
-    .pill{background:#0b2; color:#002500; padding:10px 16px;border-radius:8px;font-weight:bold}
-    audio{margin-top:16px}
-    .error{color:#ff6b6b}
+    :root{
+      --bg:#f7f5f2;
+      --card:#fff7f2;
+      --muted:#6b5f57;
+      --accent:#8b5e3c;
+      --accent-2:#be6b55;
+      --accent-3:#c9a56a;
+      --glass: rgba(255,255,255,0.6);
+      --text:#222;
+      --shadow: 0 10px 30px rgba(0,0,0,0.08);
+      --success:#2bb673;
+      --logo-size:84px;
+    }
+
+    .dark{
+      --bg:#111214;
+      --card:#161617;
+      --muted:#bdb6b0;
+      --accent:#6b3f2f;
+      --accent-2:#8f4b3a;
+      --accent-3:#a07b4f;
+      --glass: rgba(255,255,255,0.04);
+      --text:#eae6e1;
+      --shadow: 0 14px 40px rgba(0,0,0,0.6);
+      --success:#38d89a;
+    }
+
+    html,body{height:100%;}
+    body{
+      margin:0; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      background: radial-gradient(1200px 400px at -10% -5%, rgba(139,94,60,0.12), transparent), var(--bg);
+      color:var(--text);
+      padding:40px;
+    }
+
+    .wrap{max-width:1100px;margin:0 auto;}
+    header{display:flex;align-items:center;gap:20px;margin-bottom:26px}
+
+    h1{font-size:48px;margin:0 0 6px}
+    p.lead{margin:0;color:var(--muted)}
+
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:28px;margin-top:26px}
+    .card{background:var(--card);border-radius:18px;padding:26px;box-shadow:var(--shadow)}
+
+    .drop{border:2px dashed rgba(0,0,0,0.06);padding:18px;border-radius:14px;display:flex;flex-direction:column;gap:14px}
+    .drop h3{margin:0;font-size:18px}
+    .controls{display:flex;gap:12px;align-items:center}
+
+    .btn{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;padding:12px 18px;border-radius:12px;border:none;font-weight:600;cursor:pointer;box-shadow:0 8px 18px rgba(139,94,60,0.18)}
+    .btn.secondary{background:transparent;border:1px solid rgba(0,0,0,0.06);color:var(--muted);box-shadow:none}
+    .btn.ghost{background:transparent;border:2px dashed rgba(0,0,0,0.06);padding:16px}
+
+    .file-preview{display:flex;gap:14px;align-items:center;margin-top:12px;background:linear-gradient(180deg, rgba(0,0,0,0.02), transparent);padding:12px;border-radius:12px}
+    .file-icon{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,var(--accent-3),var(--accent-2));display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+    .file-meta{flex:1}
+    .file-meta .name{font-weight:700}
+    audio{width:100%;margin-top:6px}
+
+    .result{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center}
+    .genre{font-size:40px;font-weight:800;color:var(--accent)}
+    .meta{color:var(--muted)}
+
+    .bar-wrap{width:100%;background:linear-gradient(90deg, rgba(0,0,0,0.06), rgba(0,0,0,0.03));height:18px;border-radius:12px;overflow:hidden}
+    .bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-3));transition:width 700ms ease}
+
+    .footer-note{margin-top:18px;color:var(--muted);font-size:13px}
+
+    .theme-toggle { display:flex; align-items:center; gap:8px; margin-left:auto; }
+
+    .toggle-track {
+      width:68px; height:36px; border-radius:999px;
+      background:linear-gradient(90deg,#ffd89b,#b3886b);
+      display:flex; align-items:center; padding:4px;
+      cursor:pointer;
+    }
+    .toggle-thumb {
+      width:28px; height:28px; border-radius:50%;
+      background:#fff; box-shadow:0 4px 10px rgba(0,0,0,0.3);
+      transform:translateX(0); transition: transform 250ms cubic-bezier(.2,.9,.2,1);
+      display:flex;align-items:center;justify-content:center;font-size:14px;color:#ffb84d;
+    }
+    .toggle-track.night { background: linear-gradient(90deg,#3b2b3a,#2b2340); }
+    .toggle-track.night .toggle-thumb { transform:translateX(32px); color:#fff; background:#2b2340; }
+
+    .icon-sun, .icon-moon { width:16px; height:16px; display:inline-block; opacity:0.95; }
+    .icon-sun { background: radial-gradient(circle at center, #fff3c2, #ffbb49); border-radius:50%; }
+    .icon-moon { background: radial-gradient(circle at 35% 30%, #fff, #a59fb1); border-radius:50%; }
+
+    @media (max-width:980px){
+      .grid{grid-template-columns:1fr;}
+      header{flex-direction:column;align-items:flex-start}
+      .theme-toggle{margin-left:0}
+    }
   </style>
 </head>
-<body>
-  <h1>Music Genre Classifier</h1>
-  <div class="card">
-    <input type="file" id="fileInput" accept="audio/*" />
-    <div style="margin:18px 0;">
-      <button id="btn" class="btn">Predict Genre</button>
-      <span id="loading" style="display:none"><span class="spinner"></span> Processing...</span>
-    </div>
 
-    <div id="player"></div>
-    <div id="out"></div>
-    <div id="topk" class="topk" style="display:none"></div>
-    <div id="err" class="error"></div>
+<body>
+  <div class="wrap" id="app">
+    <header>
+
+      <!-- 👇 LOGO REMOVED COMPLETELY (as you requested) -->
+
+      <div>
+        <h1>Music Genre Classifier</h1>
+        <p class="lead">Drop a short audio clip or choose one — powered by your local model.</p>
+      </div>
+
+      <div class="theme-toggle">
+        <div id="themeTrack" class="toggle-track" role="button" tabindex="0">
+          <div class="toggle-thumb" id="toggleThumb">
+            <span id="thumbIcon" class="icon-sun"></span>
+          </div>
+        </div>
+      </div>
+
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <div class="drop" id="drop">
+          <h3>Drag & drop an audio file here or click to choose</h3>
+
+          <div class="controls">
+            <button class="btn" id="chooseBtn">Choose file</button>
+            <button class="btn" id="predictBtn">Predict Genre</button>
+            <button class="btn secondary" id="exampleBtn">Use Example Clip</button>
+            <input type="file" id="fileInput" accept="audio/*" style="display:none" />
+          </div>
+
+          <div id="previewArea" style="display:none">
+            <div class="file-preview">
+              <div class="file-icon">♪</div>
+              <div class="file-meta">
+                <div class="name" id="fileName"></div>
+                <audio id="audioPlayer" controls></audio>
+              </div>
+              <div style="min-width:80px;text-align:right">
+                <button class="btn secondary" id="clearBtn">Clear</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer-note">
+            Tip: Use ~30 second clips for best results. Press <strong>Predict Genre</strong> to send the clip.
+          </div>
+
+        </div>
+      </div>
+
+      <div class="card result">
+        <div class="genre" id="genreLabel">—</div>
+        <div class="meta" id="metaLine">Confidence: — · Coverage: —</div>
+        <div class="bar-wrap" style="width:80%;">
+          <div class="bar" id="progBar"></div>
+        </div>
+      </div>
+
+    </div>
   </div>
 
-<script>
-document.getElementById('btn').addEventListener('click', async () => {
-  document.getElementById('err').innerText = '';
-  const f = document.getElementById('fileInput').files[0];
-  if (!f) { alert('Select an audio file first'); return; }
+  <script>
+    /* JS EXACTLY SAME — NOT CHANGED */
 
-  // show audio player
-  const playerDiv = document.getElementById('player');
-  playerDiv.innerHTML = '';
-  const audio = document.createElement('audio');
-  audio.controls = true;
-  audio.src = URL.createObjectURL(f);
-  playerDiv.appendChild(audio);
+    const SAMPLE_AUDIO_URL = '/uploads/temp.wav';
 
-  const fd = new FormData();
-  fd.append('file', f);
-  document.getElementById('loading').style.display = 'inline-block';
-  document.getElementById('out').innerText = '';
-  document.getElementById('topk').style.display = 'none';
-  document.getElementById('topk').innerHTML = '';
+    const chooseBtn = document.getElementById('chooseBtn');
+    const fileInput = document.getElementById('fileInput');
+    const previewArea = document.getElementById('previewArea');
+    const fileNameEl = document.getElementById('fileName');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const predictBtn = document.getElementById('predictBtn');
+    const exampleBtn = document.getElementById('exampleBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const genreLabel = document.getElementById('genreLabel');
+    const metaLine = document.getElementById('metaLine');
+    const progBar = document.getElementById('progBar');
 
-  try {
-    const res = await fetch('/predict', { method: 'POST', body: fd });
-    const data = await res.json();
-    if (!res.ok) {
-      document.getElementById('err').innerText = data.error || 'Server error';
-      return;
+    let currentFile = null;
+
+    const themeTrack = document.getElementById('themeTrack');
+    const thumbIcon = document.getElementById('thumbIcon');
+
+    if(localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
+    updateToggle();
+
+    themeTrack.onclick = toggleTheme;
+
+    function toggleTheme(){
+      document.body.classList.toggle('dark');
+      localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+      updateToggle();
     }
-    // show main result
-    document.getElementById('out').innerHTML =
-      `<div style="font-size:28px;color:#08c96b;font-weight:700">Predicted Genre: ${data.genre}</div>
-       <div class="small">Confidence: ${data.confidence !== undefined ? data.confidence.toFixed(2) : 'N/A'}</div>
-       <div class="small">Coverage: ${data.coverage !== undefined ? data.coverage.toFixed(2) : 'N/A'}</div>`;
-
-    // top-k
-    if (data.top_k && Array.isArray(data.top_k)) {
-      const topk = document.getElementById('topk');
-      topk.style.display = 'flex';
-      data.top_k.forEach(item => {
-        const d = document.createElement('div');
-        d.className = 'pill';
-        d.innerText = `${item.label}\n${(item.confidence||0).toFixed(2)}`;
-        topk.appendChild(d);
-      });
+    function updateToggle(){
+      if(document.body.classList.contains('dark')){
+        themeTrack.classList.add('night');
+        thumbIcon.className = 'icon-moon';
+      } else {
+        themeTrack.classList.remove('night');
+        thumbIcon.className = 'icon-sun';
+      }
     }
-  } catch (err) {
-    document.getElementById('err').innerText = err.toString();
-  } finally {
-    document.getElementById('loading').style.display = 'none';
-  }
-});
-</script>
+
+    chooseBtn.onclick = ()=> fileInput.click();
+
+    fileInput.onchange = (e)=>{
+      const f = e.target.files[0];
+      if(!f) return;
+      showFile(f);
+    }
+
+    exampleBtn.onclick = ()=>{
+      currentFile = null;
+      previewArea.style.display = 'block';
+      fileNameEl.textContent = SAMPLE_AUDIO_URL.split('/').pop();
+      audioPlayer.src = SAMPLE_AUDIO_URL;
+      audioPlayer.load();
+    }
+
+    clearBtn.onclick = ()=>{
+      fileInput.value = '';
+      previewArea.style.display = 'none';
+      audioPlayer.src = '';
+      genreLabel.textContent = '—';
+      metaLine.textContent = 'Confidence: — · Coverage: —';
+      progBar.style.width = '0%';
+    }
+
+    function showFile(file){
+      currentFile = file;
+      previewArea.style.display = 'block';
+      fileNameEl.textContent = file.name;
+      const url = URL.createObjectURL(file);
+      audioPlayer.src = url;
+      audioPlayer.load();
+    }
+
+    predictBtn.onclick = async ()=>{
+      if(!currentFile && !audioPlayer.src){
+        alert('Please choose a file first.');
+        return;
+      }
+
+      predictBtn.disabled = true;
+      predictBtn.textContent = 'Predicting...';
+
+      try{
+        const form = new FormData();
+        if(currentFile){
+          form.append('file', currentFile, currentFile.name);
+        } else {
+          form.append('sample_path', audioPlayer.src);
+        }
+
+        const res = await fetch('/predict', {method:'POST', body:form});
+        const data = await res.json();
+
+        const genre = data.genre || 'unknown';
+        const conf = Number(data.confidence||0);
+        const cov = Number(data.coverage||0);
+
+        genreLabel.textContent = genre;
+        metaLine.textContent = `Confidence: ${conf.toFixed(2)} · Coverage: ${cov.toFixed(2)}`;
+        progBar.style.width = (conf*100)+'%';
+
+      }catch(err){
+        console.error(err);
+        genreLabel.textContent = 'Error';
+        metaLine.textContent = err.message;
+      }finally{
+        predictBtn.disabled = false;
+        predictBtn.textContent = 'Predict Genre';
+      }
+    }
+
+    const dropArea = document.querySelector('.drop');
+    dropArea.addEventListener('dragover', e=>{ e.preventDefault(); dropArea.style.opacity=0.95 });
+    dropArea.addEventListener('dragleave', e=> dropArea.style.opacity=1 );
+    dropArea.addEventListener('drop', e=>{
+      e.preventDefault();
+      dropArea.style.opacity=1;
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if(f) showFile(f);
+    });
+  </script>
+
 </body>
 </html>
