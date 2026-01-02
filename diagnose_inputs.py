@@ -50,7 +50,7 @@ def build_vector(feat_dict):
     return vec
 
 # collect sample files (change path only if needed)
-files = glob.glob("data/**/*.wav", recursive=True)[:40]  # first 40 files
+files = glob.glob("data/**/*.wav", recursive=True)[:40]  # first 40 file
 summary = defaultdict(list)
 
 for p in files:
