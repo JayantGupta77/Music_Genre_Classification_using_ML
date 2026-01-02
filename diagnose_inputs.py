@@ -49,7 +49,7 @@ def build_vector(feat_dict):
             elif key_std in fd and ("std" in n or "var" in n): vec[i] = fd[key_std]
     return vec
 
-# collect sample files (change path if needed)
+# collect sample files (change path only if needed)
 files = glob.glob("data/**/*.wav", recursive=True)[:40]  # first 40 files
 summary = defaultdict(list)
 
