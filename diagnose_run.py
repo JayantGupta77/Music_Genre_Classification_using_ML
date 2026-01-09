@@ -29,7 +29,7 @@ try:
 except Exception as e:
     print("model_utils import failed:", e)
 
-# helper: try user extractor ( generic )
+# helper: try user extractor ( generic)
 def call_user_extractor(path):
     if mu is None:
         return None, "no_model_utils"
