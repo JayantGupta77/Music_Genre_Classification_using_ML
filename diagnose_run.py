@@ -52,7 +52,7 @@ def call_user_extractor(path):
             continue
     return None, "all_candidates_failed"
 
-# mapping function used in your app (simplified copy)
+# mapping function used in your app ( simplified copy)
 import re
 def build_vec_from_dict(feature_order, feature_dict):
     vec = np.zeros(len(feature_order), dtype=float)
