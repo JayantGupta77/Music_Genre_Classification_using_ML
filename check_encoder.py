@@ -9,7 +9,7 @@ try:
 except Exception as e:
     print("No encoder or failed to load:", e)
 
-# if model exists, show its overall predicted class distribution on saved training features (fast)
+# if model exists, show its overall predicted class distribution on saved training features(fast)
 import pandas as pd, joblib
 try:
     model = joblib.load("artifacts/model.pkl")
