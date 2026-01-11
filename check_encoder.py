@@ -24,7 +24,6 @@ try:
         X = feat.copy()
         y = None
 
-
     # if scaler uses feature names, ensure columns align; keep only those matching model n_features_in_
     try:
         scaler = joblib.load("artifacts/scaler.pkl")
