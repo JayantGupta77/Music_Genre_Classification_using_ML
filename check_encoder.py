@@ -32,7 +32,6 @@ try:
     except Exception:
         scaler = None
 
-
     # reduce to columns model expects if necessary
     # try predicting (may raise if columns mismatch)
     preds = model.predict(X)
