@@ -9,6 +9,7 @@ try:
 except Exception as e:
     print("No encoder or failed to load:", e)
 
+
 # if model exists, show its overall predicted class distribution on saved training features(fast)
 import pandas as pd, joblib
 try:
@@ -23,7 +24,6 @@ try:
         # if csv has feature columns only, try to load features and use model.predict to see distribution
         X = feat.copy()
         y = None
-
 
     # if scaler uses feature names, ensure columns align; keep only those matching model n_features_in_
     try:
