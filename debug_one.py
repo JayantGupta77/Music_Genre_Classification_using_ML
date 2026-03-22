@@ -6,6 +6,7 @@ from importlib import import_module
 import joblib, json, numpy as np, pandas as pd, os, librosa
 from pprint import pprint
 
+
 ART = "artifacts"
 MODEL_PATH = os.path.join(ART, "model.pkl")
 SCALER_PATH = os.path.join(ART, "scaler.pkl")
