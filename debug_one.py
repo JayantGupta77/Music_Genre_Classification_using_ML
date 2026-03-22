@@ -12,7 +12,6 @@ SCALER_PATH = os.path.join(ART, "scaler.pkl")
 ENC_PATH = os.path.join(ART, "encoder.pkl")
 FEATURE_ORDER = os.path.join(ART, "feature_order.json")
 
-
 def build_feature_vector_from_dict(feature_order, feature_dict):
     # copy the same mapping code you use in app.py (simple fuzzy)
     import re
