@@ -24,6 +24,7 @@ def build_feature_vector_from_dict(feature_order, feature_dict):
                 vec[i] = fd[k]; break
     return vec
 
+
 def compute_features_fallback(path, n_mfcc=20, duration=3):
     y, sr = librosa.load(path, duration=duration, sr=None)
     f = {}
